@@ -16,7 +16,14 @@
     <div class="hero-bankroll">₹<span id="bankrollText">30000</span></div>
   </section>
 
-  <section class="card compact">
+  
+
+  <section class="card keypad-card"><div class="section-title" data-i18n="playerKeypad">Player keypad</div><div class="pending-line"><span data-i18n="pending">Pending</span>: <span id="pendingPlayer">—</span></div><div class="keypad player-pad" id="playerPad"></div></section>
+  <section class="card keypad-card"><div class="section-title" data-i18n="bankerKeypad">Banker keypad</div><div class="pending-line"><span data-i18n="pending">Pending</span>: <span id="pendingBanker">—</span></div><div class="keypad banker-pad" id="bankerPad"></div></section>
+
+  <section class="card compact"><div class="section-title" data-i18n="nextBets">Next Bets</div><div class="next-boxes"><div class="next-box"><div class="tiny" data-i18n="nextPlayerBets">Next Player Bets</div><div id="nextPlayerList">—</div></div><div class="next-box"><div class="tiny" data-i18n="nextBankerBets">Next Banker Bets</div><div id="nextBankerList">—</div></div></div></section>
+
+      <section class="card compact">
     <div class="top-grid">
       <div class="round-card"><div class="tiny" data-i18n="round">Round</div><div class="round-big" id="roundCount">0</div></div>
       <div class="stats-stack">
@@ -25,11 +32,6 @@
       </div>
     </div>
   </section>
-
-  <section class="card keypad-card"><div class="section-title" data-i18n="playerKeypad">Player keypad</div><div class="pending-line"><span data-i18n="pending">Pending</span>: <span id="pendingPlayer">—</span></div><div class="keypad player-pad" id="playerPad"></div></section>
-  <section class="card keypad-card"><div class="section-title" data-i18n="bankerKeypad">Banker keypad</div><div class="pending-line"><span data-i18n="pending">Pending</span>: <span id="pendingBanker">—</span></div><div class="keypad banker-pad" id="bankerPad"></div></section>
-
-  <section class="card compact"><div class="section-title" data-i18n="nextBets">Next Bets</div><div class="next-boxes"><div class="next-box"><div class="tiny" data-i18n="nextPlayerBets">Next Player Bets</div><div id="nextPlayerList">—</div></div><div class="next-box"><div class="tiny" data-i18n="nextBankerBets">Next Banker Bets</div><div id="nextBankerList">—</div></div></div></section>
 
   <div class="action-row"><button id="undoBtn" class="pill danger" data-i18n="undoLast">Undo Last</button><button id="clearBtn" class="pill" data-i18n="clearShoe">Clear Shoe</button><button id="newBtn" class="pill accent" data-i18n="newShoe">New Shoe</button></div>
 
