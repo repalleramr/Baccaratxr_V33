@@ -1,354 +1,40 @@
-
-const MAX_STEPS = 35;
-const state = {
-  currentTab: 'play',
-  theme: localStorage.getItem('bt_theme') || 'casino',
-  settings: {
-    startingBankroll: Number(localStorage.getItem('bt_startingBankroll') || 30000),
-    targetAmount: Number(localStorage.getItem('bt_targetAmount') || 5000),
-    targetPercent: Number(localStorage.getItem('bt_targetPercent') || 16.67),
-    keepSameTarget: localStorage.getItem('bt_keepSameTarget') === 'true',
-    minBet: Number(localStorage.getItem('bt_minBet') || 100),
-    maxBet: Number(localStorage.getItem('bt_maxBet') || 3000),
-    multiple: Number(localStorage.getItem('bt_multiple') || 100),
-    profitTarget: Number(localStorage.getItem('bt_profitTarget') || 500)
-  },
-  bankroll: Number(localStorage.getItem('bt_bankroll') || 30000),
-  rounds: JSON.parse(localStorage.getItem('bt_rounds') || '[]'),
-  ladder: JSON.parse(localStorage.getItem('bt_ladder') || '[]')
-};
-
-function money(n){ return '₹' + Number(n || 0).toFixed(0); }
-function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
-function saveState(){
-  localStorage.setItem('bt_theme', state.theme);
-  localStorage.setItem('bt_startingBankroll', state.settings.startingBankroll);
-  localStorage.setItem('bt_targetAmount', state.settings.targetAmount);
-  localStorage.setItem('bt_targetPercent', state.settings.targetPercent);
-  localStorage.setItem('bt_keepSameTarget', state.settings.keepSameTarget);
-  localStorage.setItem('bt_minBet', state.settings.minBet);
-  localStorage.setItem('bt_maxBet', state.settings.maxBet);
-  localStorage.setItem('bt_multiple', state.settings.multiple);
-  localStorage.setItem('bt_profitTarget', state.settings.profitTarget);
-  localStorage.setItem('bt_bankroll', state.bankroll);
-  localStorage.setItem('bt_rounds', JSON.stringify(state.rounds));
-  localStorage.setItem('bt_ladder', JSON.stringify(state.ladder));
-}
-function applyTheme(){
-  document.body.classList.remove('theme-neo','theme-classic');
-  if(state.theme === 'neo') document.body.classList.add('theme-neo');
-  if(state.theme === 'classic') document.body.classList.add('theme-classic');
-  document.querySelectorAll('.theme-btn').forEach(btn=>{
-    btn.classList.toggle('is-selected', btn.dataset.theme === state.theme);
-  });
-}
-function roundToMultiple(v, multiple){
-  return Math.ceil(v / multiple) * multiple;
-}
-function autoGenerateLadder(){
-  const {minBet, maxBet, multiple, profitTarget} = state.settings;
-  const steps = [];
-  let priorLosses = 0;
-  for(let i=1;i<=MAX_STEPS;i++){
-    let need = (profitTarget + priorLosses) / 8;
-    let bet = roundToMultiple(Math.max(minBet, need), multiple);
-    bet = Math.min(maxBet, bet);
-    steps.push(bet);
-    priorLosses += bet;
-  }
-  state.ladder = steps;
-  saveState();
-}
-function buildLadderUI(){
-  const wrap = document.getElementById('ladderList');
-  wrap.innerHTML = '';
-  if(!state.ladder.length) autoGenerateLadder();
-  let priorLoss = 0;
-  state.ladder.forEach((bet, idx)=>{
-    const row = document.createElement('div');
-    row.className = 'ladder-row';
-    const netIfHit = 8 * bet - priorLoss;
-    row.innerHTML = `
-      <div class="ladder-step">${idx+1}</div>
-      <input type="number" inputmode="numeric" enterkeyhint="${idx === state.ladder.length-1 ? 'done' : 'next'}" value="${bet}" data-step="${idx}" />
-      <div class="ladder-net">≥ ${money(netIfHit)}</div>
-    `;
-    wrap.appendChild(row);
-    priorLoss += Number(bet || 0);
-  });
-  wrap.querySelectorAll('input').forEach((input, idx, arr)=>{
-    input.addEventListener('input', e=>{
-      const i = Number(e.target.dataset.step);
-      state.ladder[i] = Number(e.target.value || 0);
-      saveState();
-      buildLadderUI();
-    });
-    input.addEventListener('keydown', e=>{
-      if(e.key === 'Enter'){
-        e.preventDefault();
-        const next = arr[idx+1];
-        if(next) next.focus();
-        else input.blur();
-      }
-    });
-  });
-}
-function setupKeypads(){
-  const digits = ['0','1','2','3','4','5','6','7','8','9'];
-  ['playerKeypad','bankerKeypad'].forEach(id=>{
-    const wrap = document.getElementById(id);
-    wrap.innerHTML = '';
-    digits.forEach(d=>{
-      const btn = document.createElement('button');
-      btn.className = 'key-btn';
-      btn.textContent = d;
-      btn.addEventListener('click', ()=>{
-        addRound(id === 'playerKeypad' ? Number(d) : null, id === 'bankerKeypad' ? Number(d) : null);
-      });
-      wrap.appendChild(btn);
-    });
-  });
-}
-function addRound(player, banker){
-  // one-side entry helper: if player entered alone, banker defaults null; same for banker
-  const now = new Date();
-  const round = {
-    id: state.rounds.length + 1,
-    date: now.toISOString().slice(0,10),
-    time: now.toTimeString().slice(0,8),
-    player,
-    banker,
-    pNet: 0,
-    bNet: 0,
-    totalNet: 0,
-    bankroll: state.bankroll
-  };
-  state.rounds.push(round);
-  saveState();
-  renderAll();
-}
-function setTab(name){
-  state.currentTab = name;
-  document.querySelectorAll('.tab-screen').forEach(el=>el.classList.toggle('is-active', el.dataset.tab === name));
-  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.toggle('is-active', el.dataset.tabTarget === name));
-}
-function renderBoard(){
-  const makeTile = (n)=>{
-    const div = document.createElement('div');
-    div.className = 'tile inactive';
-    div.innerHTML = `
-      <div class="num">${n}</div>
-      <div class="state">INACTIVE</div>
-      <div class="bet">STEP 0 • BET ₹0</div>
-      <div class="progress"><div style="width:0%"></div></div>
-    `;
-    return div;
-  };
-  ['playerBoard','bankerBoard'].forEach(id=>{
-    const wrap = document.getElementById(id);
-    wrap.innerHTML = '';
-    for(let n=1;n<=9;n++) wrap.appendChild(makeTile(n));
-  });
-}
-function renderHistory(){
-  const body = document.getElementById('historyBody');
-  if(!state.rounds.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="9">No rounds recorded yet</td></tr>';
-    return;
-  }
-  body.innerHTML = '';
-  [...state.rounds].reverse().forEach((r, idx)=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${state.rounds.length - idx}</td>
-      <td>${r.date}</td>
-      <td>${r.time}</td>
-      <td>${r.player ?? '—'}</td>
-      <td>${r.banker ?? '—'}</td>
-      <td>${money(r.pNet)}</td>
-      <td>${money(r.bNet)}</td>
-      <td>${money(r.totalNet)}</td>
-      <td>${money(r.bankroll)}</td>
-    `;
-    body.appendChild(tr);
-  });
-}
-function renderAnalytics(){
-  document.getElementById('aRounds').textContent = state.rounds.length;
-  document.getElementById('aBankroll').textContent = money(state.bankroll);
-  document.getElementById('aPWins').textContent = 0;
-  document.getElementById('aBWins').textContent = 0;
-
-  const currentNet = state.bankroll - state.settings.startingBankroll;
-  document.getElementById('targetCurrent').textContent = money(currentNet);
-  document.getElementById('targetGoal').textContent = money(state.settings.targetAmount);
-  const p = clamp((currentNet / Math.max(1,state.settings.targetAmount)) * 100, 0, 100);
-  document.getElementById('targetFill').style.width = p + '%';
-  document.getElementById('targetFill').style.background = p >= 100 ? '#30cc78' : '#f5cb57';
-  document.getElementById('targetPercentText').textContent = p.toFixed(1) + '%';
-
-  const exposureSeries = state.rounds.length ? state.rounds.map((_,i)=> (i+1)*100).join(' → ') : 'No exposure data yet';
-  document.getElementById('exposureTimeline').textContent = exposureSeries;
-
-  const vol = state.rounds.length ? clamp(state.rounds.length * 6, 6, 100) : 10;
-  document.getElementById('volatilityFill').style.width = vol + '%';
-  document.getElementById('volatilityFill').style.background = vol < 34 ? '#30cc78' : vol < 67 ? '#f5cb57' : '#ef5c66';
-  document.getElementById('volatilityText').textContent = vol < 34 ? 'LOW' : vol < 67 ? 'MED' : 'HIGH';
-
-  if(state.rounds.length < 4){
-    document.getElementById('predictorRange').textContent = 'Step 1–3';
-    document.getElementById('predA').textContent = '60%';
-    document.getElementById('predB').textContent = '25%';
-    document.getElementById('predC').textContent = '10%';
-    document.getElementById('predD').textContent = '5%';
-  } else {
-    document.getElementById('predictorRange').textContent = 'Step 4–7';
-    document.getElementById('predA').textContent = '25%';
-    document.getElementById('predB').textContent = '50%';
-    document.getElementById('predC').textContent = '18%';
-    document.getElementById('predD').textContent = '7%';
-  }
-
-  if(currentNet >= state.settings.targetAmount){
-    document.getElementById('nextShoeSuggestion').textContent = 'Target reached. Recommended next shoe bankroll: ' + money(state.settings.startingBankroll);
-  } else if(currentNet < 0 && state.rounds.length){
-    document.getElementById('nextShoeSuggestion').textContent = 'Mid-shoe loss state. Recommended restart bankroll: ' + money(state.settings.startingBankroll);
-  } else {
-    document.getElementById('nextShoeSuggestion').textContent = 'Available after target reached or shoe stopped with loss.';
-  }
-}
-function renderPlay(){
-  document.getElementById('startBankrollText').textContent = state.settings.startingBankroll.toFixed(0);
-  document.getElementById('liveBankrollText').textContent = state.bankroll.toFixed(0);
-  document.getElementById('roundCount').textContent = state.rounds.length;
-
-  document.getElementById('playerActiveCount').textContent = 0;
-  document.getElementById('bankerActiveCount').textContent = 0;
-  document.getElementById('playerNet').textContent = money(0);
-  document.getElementById('bankerNet').textContent = money(0);
-  document.getElementById('playerNextTotal').textContent = money(0);
-  document.getElementById('bankerNextTotal').textContent = money(0);
-
-  const recent = state.rounds.slice(-5).map(r => `P${r.player ?? '—'}-B${r.banker ?? '—'}`);
-  document.getElementById('last5Results').textContent = recent.length ? recent.join(' ') : '—';
-
-  const exposure = 0;
-  document.getElementById('playerExposure').textContent = money(0);
-  document.getElementById('bankerExposure').textContent = money(0);
-  document.getElementById('totalExposure').textContent = money(exposure);
-  document.getElementById('nextPlayerBets').textContent = '—';
-  document.getElementById('nextBankerBets').textContent = '—';
-
-  const riskPercent = clamp((state.rounds.length * 2), 4, 100);
-  const fill = document.getElementById('riskFill');
-  fill.style.width = riskPercent + '%';
-  fill.style.background = riskPercent < 34 ? '#30cc78' : riskPercent < 67 ? '#f5cb57' : '#ef5c66';
-  document.getElementById('riskText').textContent = riskPercent < 34 ? 'LOW' : riskPercent < 67 ? 'MED' : 'HIGH';
-}
-function renderSettings(){
-  document.getElementById('startingBankrollInput').value = state.settings.startingBankroll;
-  document.getElementById('targetAmountInput').value = state.settings.targetAmount;
-  document.getElementById('targetPercentInput').value = state.settings.targetPercent;
-  document.getElementById('keepTargetToggle').checked = state.settings.keepSameTarget;
-  document.getElementById('minBetInput').value = state.settings.minBet;
-  document.getElementById('maxBetInput').value = state.settings.maxBet;
-  document.getElementById('multipleInput').value = state.settings.multiple;
-  document.getElementById('profitTargetInput').value = state.settings.profitTarget;
-}
-function syncTargetFromAmount(){
-  const amount = Number(document.getElementById('targetAmountInput').value || 0);
-  const start = Number(document.getElementById('startingBankrollInput').value || 1);
-  document.getElementById('targetPercentInput').value = ((amount / start) * 100).toFixed(2);
-}
-function syncTargetFromPercent(){
-  const percent = Number(document.getElementById('targetPercentInput').value || 0);
-  const start = Number(document.getElementById('startingBankrollInput').value || 0);
-  document.getElementById('targetAmountInput').value = Math.round(start * percent / 100);
-}
-function bindSettings(){
-  document.getElementById('targetAmountInput').addEventListener('input', syncTargetFromAmount);
-  document.getElementById('targetPercentInput').addEventListener('input', syncTargetFromPercent);
-  document.getElementById('startingBankrollInput').addEventListener('input', ()=>{
-    syncTargetFromAmount();
-  });
-  document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
-    state.settings.startingBankroll = Number(document.getElementById('startingBankrollInput').value || 30000);
-    state.settings.targetAmount = Number(document.getElementById('targetAmountInput').value || 5000);
-    state.settings.targetPercent = Number(document.getElementById('targetPercentInput').value || 16.67);
-    state.settings.keepSameTarget = document.getElementById('keepTargetToggle').checked;
-    state.settings.minBet = Number(document.getElementById('minBetInput').value || 100);
-    state.settings.maxBet = Number(document.getElementById('maxBetInput').value || 3000);
-    state.settings.multiple = Number(document.getElementById('multipleInput').value || 100);
-    state.settings.profitTarget = Number(document.getElementById('profitTargetInput').value || 500);
-    if(!state.rounds.length) state.bankroll = state.settings.startingBankroll;
-    autoGenerateLadder();
-    saveState();
-    renderAll();
-    alert('Settings saved');
-  });
-  document.getElementById('resetAllBtn').addEventListener('click', ()=>{
-    if(confirm('Reset all data?')){
-      state.rounds = [];
-      state.bankroll = state.settings.startingBankroll;
-      autoGenerateLadder();
-      saveState();
-      renderAll();
-    }
-  });
-  document.querySelectorAll('.theme-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      state.theme = btn.dataset.theme;
-      saveState();
-      applyTheme();
-    });
-  });
-}
-function bindTabs(){
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> setTab(btn.dataset.tabTarget));
-  });
-}
-function bindActions(){
-  document.getElementById('undoBtn').addEventListener('click', ()=>{
-    state.rounds.pop();
-    saveState();
-    renderAll();
-  });
-  document.getElementById('clearBtn').addEventListener('click', ()=>{
-    state.rounds = [];
-    saveState();
-    renderAll();
-  });
-  document.getElementById('newShoeBtn').addEventListener('click', ()=>{
-    state.rounds = [];
-    if(!state.settings.keepSameTarget){
-      state.settings.targetAmount = Math.round(state.bankroll * state.settings.targetPercent / 100);
-    }
-    saveState();
-    renderAll();
-  });
-  document.getElementById('autoBuildBtn').addEventListener('click', ()=>{
-    autoGenerateLadder();
-    renderAll();
-  });
-  ['exportCsvBtn','exportPdfBtn','exportXlsBtn'].forEach(id=>{
-    document.getElementById(id).addEventListener('click', ()=> alert('Export available when data is present.'));
-  });
-}
-function renderAll(){
-  applyTheme();
-  renderPlay();
-  renderBoard();
-  renderHistory();
-  renderAnalytics();
-  buildLadderUI();
-  renderSettings();
-}
-document.addEventListener('DOMContentLoaded', ()=>{
-  bindTabs();
-  bindSettings();
-  bindActions();
-  setupKeypads();
-  if(!state.ladder.length) autoGenerateLadder();
-  renderAll();
-});
+const MAX_STEPS=35;
+const blankTracker=num=>({num,status:'inactive',misses:0,losses:0,grossWins:0,seen:0,closedProfit:0});
+const blankSide=()=>{const o={};for(let i=1;i<=9;i++)o[i]=blankTracker(i);return o;};
+const defaultState={theme:'casino',bankroll:30000,settings:{startingBankroll:30000,targetAmount:5000,targetPercent:16.67,keepSameTarget:false,minBet:100,maxBet:3000,multiple:100,profitTarget:500},ladder:[],rounds:[],pending:{player:null,banker:null},tabs:'play',shoeSnapshots:[],sides:{player:blankSide(),banker:blankSide()}};
+let state=null;
+const clone=v=>JSON.parse(JSON.stringify(v));
+const money=v=>'₹'+Number(v||0).toFixed(0);
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+const roundUpToMultiple=(v,m)=>Math.ceil(v/m)*m;
+function loadState(){const raw=localStorage.getItem('bt_v33_complete');state=raw?JSON.parse(raw):clone(defaultState);if(!state.sides||!state.sides.player)state.sides={player:blankSide(),banker:blankSide()};if(!state.ladder||!state.ladder.length)autoGenerateLadder();}
+function saveState(){localStorage.setItem('bt_v33_complete',JSON.stringify(state));}
+function autoGenerateLadder(){const s=state.settings;let prior=0;state.ladder=[];for(let i=0;i<MAX_STEPS;i++){let need=(s.profitTarget+prior)/8;let bet=roundUpToMultiple(Math.max(s.minBet,need),s.multiple);bet=Math.min(s.maxBet,bet);state.ladder.push(bet);prior+=bet;}}
+const getStepForTracker=t=>t.misses+1;
+const getBetForTracker=t=>state.ladder[Math.min(getStepForTracker(t)-1,state.ladder.length-1)]||0;
+const activeTrackers=side=>Object.values(state.sides[side]).filter(t=>t.status==='active');
+const winCount=side=>Object.values(state.sides[side]).filter(t=>t.status==='excluded').length;
+function recordSeen(side,result){if(result>=1&&result<=9)state.sides[side][result].seen+=1;}
+function processSide(sideName,result){const side=state.sides[sideName];recordSeen(sideName,result);const active=activeTrackers(sideName);let roundNet=0,exposure=0;active.forEach(t=>exposure+=getBetForTracker(t));const treatAsBlank=(result===0)||(result>=1&&result<=9&&side[result].status==='excluded');if(treatAsBlank){active.forEach(t=>{const bet=getBetForTracker(t);roundNet-=bet;t.losses+=bet;t.misses+=1;});return{roundNet,exposure};}if(result>=1&&result<=9){const target=side[result];if(target.status==='inactive'){active.forEach(t=>{const bet=getBetForTracker(t);roundNet-=bet;t.losses+=bet;t.misses+=1;});target.status='active';target.misses=0;target.losses=0;return{roundNet,exposure};}if(target.status==='active'){active.forEach(t=>{const bet=getBetForTracker(t);if(t.num===result){roundNet+=8*bet;t.grossWins+=8*bet;t.closedProfit=(8*bet)-t.losses;t.status='excluded';t.misses=0;}else{roundNet-=bet;t.losses+=bet;t.misses+=1;}});return{roundNet,exposure};}}return{roundNet,exposure};}
+function commitRound(player,banker){const now=new Date(),p=Number(player),b=Number(banker),pRes=processSide('player',p),bRes=processSide('banker',b),total=pRes.roundNet+bRes.roundNet;state.bankroll+=total;state.rounds.push({id:state.rounds.length+1,date:now.toISOString().slice(0,10),time:now.toTimeString().slice(0,8),player:p,banker:b,pNet:pRes.roundNet,bNet:bRes.roundNet,totalNet:total,bankroll:state.bankroll,exposure:pRes.exposure+bRes.exposure});state.pending={player:null,banker:null};saveState();renderAll();}
+function maybeCommitRound(){if(state.pending.player!==null&&state.pending.banker!==null)commitRound(state.pending.player,state.pending.banker);}
+function setPending(side,digit){state.pending[side]=digit;document.getElementById(side==='player'?'pendingPlayer':'pendingBanker').textContent=digit;maybeCommitRound();}
+function setTab(name){state.tabs=name;document.querySelectorAll('.tab-screen').forEach(el=>el.classList.toggle('is-active',el.dataset.tab===name));document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.tabTarget===name));}
+function setupKeypads(){['playerKeypad','bankerKeypad'].forEach(id=>{const wrap=document.getElementById(id);wrap.innerHTML='';for(let d=0;d<=9;d++){const btn=document.createElement('button');btn.className='key-btn';btn.textContent=String(d);btn.addEventListener('click',()=>setPending(id==='playerKeypad'?'player':'banker',d));wrap.appendChild(btn);}});}
+function renderHero(){document.getElementById('startBankrollText').textContent=state.settings.startingBankroll.toFixed(0);document.getElementById('liveBankrollText').textContent=state.bankroll.toFixed(0);}
+function renderPlay(){document.getElementById('roundCount').textContent=state.rounds.length;const pA=activeTrackers('player'),bA=activeTrackers('banker');document.getElementById('playerActiveCount').textContent=pA.length;document.getElementById('bankerActiveCount').textContent=bA.length;const pNet=state.rounds.reduce((a,r)=>a+r.pNet,0),bNet=state.rounds.reduce((a,r)=>a+r.bNet,0);document.getElementById('playerNet').textContent=money(pNet);document.getElementById('bankerNet').textContent=money(bNet);const pExp=pA.reduce((a,t)=>a+getBetForTracker(t),0),bExp=bA.reduce((a,t)=>a+getBetForTracker(t),0);document.getElementById('playerExposure').textContent=money(pExp);document.getElementById('bankerExposure').textContent=money(bExp);document.getElementById('totalExposure').textContent=money(pExp+bExp);document.getElementById('nextPlayerBets').textContent=pA.length?pA.map(t=>`${t.num}=S${getStepForTracker(t)} ${money(getBetForTracker(t))}`).join('  '):'—';document.getElementById('nextBankerBets').textContent=bA.length?bA.map(t=>`${t.num}=S${getStepForTracker(t)} ${money(getBetForTracker(t))}`).join('  '):'—';document.getElementById('playerNextTotal').textContent=money(pExp);document.getElementById('bankerNextTotal').textContent=money(bExp);document.getElementById('last5Results').textContent=state.rounds.length?state.rounds.slice(-5).map(r=>`P${r.player}-B${r.banker}`).join(' '):'—';document.getElementById('pendingPlayer').textContent=state.pending.player===null?'—':state.pending.player;document.getElementById('pendingBanker').textContent=state.pending.banker===null?'—':state.pending.banker;const risk=clamp(((pExp+bExp)/Math.max(1,state.bankroll))*100,0,100),fill=document.getElementById('riskFill');fill.style.width=Math.max(4,risk)+'%';fill.style.background=risk<10?'#2dcf78':risk<25?'#f0c450':'#ef5d66';document.getElementById('riskText').textContent=risk<10?'LOW':risk<25?'MED':'HIGH';}
+function buildTile(sideName,t){const bet=t.status==='active'?getBetForTracker(t):0,step=t.status==='active'?getStepForTracker(t):0,div=document.createElement('div');let cls='inactive';if(t.status==='active')cls='active';if(t.status==='excluded')cls='excluded';if(t.status==='active'&&bet>=state.settings.maxBet)cls='cap';let stateText='INACTIVE',betText='STEP 0 • BET ₹0',pct=0;if(t.status==='active'){stateText='ACTIVE';betText=`STEP ${step} • BET ${money(bet)}`;pct=Math.min(100,(step/MAX_STEPS)*100);}else if(t.status==='excluded'){stateText='EXCLUDED';betText=`WIN ${money(t.closedProfit)}`;pct=100;}div.className='tile '+cls;div.innerHTML=`<div class="num">${t.num}</div><div class="state">${stateText}</div><div class="bet">${betText}</div><div class="progress"><div style="width:${pct}%"></div></div>`;return div;}
+function renderBoard(){['player','banker'].forEach(side=>{const wrap=document.getElementById(side+'Board');wrap.innerHTML='';for(let i=1;i<=9;i++)wrap.appendChild(buildTile(side,state.sides[side][i]));});}
+function renderHistory(){const body=document.getElementById('historyBody');if(!state.rounds.length){body.innerHTML='<tr class="empty-row"><td colspan="9">No rounds recorded yet</td></tr>';return;}body.innerHTML='';[...state.rounds].reverse().forEach((r,idx)=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${state.rounds.length-idx}</td><td>${r.date}</td><td>${r.time}</td><td>${r.player}</td><td>${r.banker}</td><td>${money(r.pNet)}</td><td>${money(r.bNet)}</td><td>${money(r.totalNet)}</td><td>${money(r.bankroll)}</td>`;body.appendChild(tr);});}
+function renderAnalytics(){document.getElementById('aRounds').textContent=state.rounds.length;document.getElementById('aBankroll').textContent=money(state.bankroll);document.getElementById('aPWins').textContent=winCount('player');document.getElementById('aBWins').textContent=winCount('banker');const currentNet=state.bankroll-state.settings.startingBankroll;document.getElementById('targetCurrent').textContent=money(currentNet);document.getElementById('targetGoal').textContent=money(state.settings.targetAmount);const p=clamp((currentNet/Math.max(1,state.settings.targetAmount))*100,0,100),tf=document.getElementById('targetFill');tf.style.width=p+'%';tf.style.background=p>=100?'#2dcf78':'#f0c450';document.getElementById('targetPercentText').textContent=p.toFixed(1)+'%';document.getElementById('exposureTimeline').textContent=state.rounds.length?state.rounds.map(r=>r.exposure).join(' → '):'No exposure data yet';const vol=clamp(state.rounds.length*6+(activeTrackers('player').length+activeTrackers('banker').length)*5,5,100),vf=document.getElementById('volatilityFill');vf.style.width=vol+'%';vf.style.background=vol<34?'#2dcf78':vol<67?'#f0c450':'#ef5d66';document.getElementById('volatilityText').textContent=vol<34?'LOW':vol<67?'MED':'HIGH';if(state.rounds.length<4){document.getElementById('predictorRange').textContent='Step 1–3';document.getElementById('predA').textContent='60%';document.getElementById('predB').textContent='25%';document.getElementById('predC').textContent='10%';document.getElementById('predD').textContent='5%';}else if(state.rounds.length<10){document.getElementById('predictorRange').textContent='Step 4–7';document.getElementById('predA').textContent='25%';document.getElementById('predB').textContent='50%';document.getElementById('predC').textContent='18%';document.getElementById('predD').textContent='7%';}else{document.getElementById('predictorRange').textContent='Step 8–12';document.getElementById('predA').textContent='20%';document.getElementById('predB').textContent='30%';document.getElementById('predC').textContent='35%';document.getElementById('predD').textContent='15%';}document.getElementById('nextShoeSuggestion').textContent=currentNet>=state.settings.targetAmount?'Target reached. Safe next shoe bankroll: '+money(state.settings.startingBankroll):(currentNet<0&&state.rounds.length?'Mid-shoe loss state. Recommended restart bankroll: '+money(state.settings.startingBankroll):'Available after target reached or shoe stopped with loss.');}
+function buildLadderUI(){const wrap=document.getElementById('ladderList');wrap.innerHTML='';let prior=0;state.ladder.forEach((bet,idx)=>{const row=document.createElement('div');row.className='ladder-row';const net=8*bet-prior;row.innerHTML=`<div class="ladder-step">${idx+1}</div><input type="number" inputmode="numeric" enterkeyhint="${idx===state.ladder.length-1?'done':'next'}" value="${bet}" data-step="${idx}"/><div class="ladder-net">≥ ${money(net)}</div>`;wrap.appendChild(row);prior+=Number(bet||0);});const inputs=[...wrap.querySelectorAll('input')];inputs.forEach((input,idx)=>{input.addEventListener('input',e=>{state.ladder[Number(e.target.dataset.step)]=Number(e.target.value||0);saveState();buildLadderUI();});input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const next=inputs[idx+1];if(next)next.focus();else input.blur();}});});}
+function applyTheme(){document.body.classList.remove('theme-neo','theme-classic');if(state.theme==='neo')document.body.classList.add('theme-neo');if(state.theme==='classic')document.body.classList.add('theme-classic');document.querySelectorAll('.theme-btn').forEach(btn=>btn.classList.toggle('is-selected',btn.dataset.theme===state.theme));}
+function renderSettings(){document.getElementById('startingBankrollInput').value=state.settings.startingBankroll;document.getElementById('targetAmountInput').value=state.settings.targetAmount;document.getElementById('targetPercentInput').value=state.settings.targetPercent;document.getElementById('keepTargetToggle').checked=!!state.settings.keepSameTarget;document.getElementById('minBetInput').value=state.settings.minBet;document.getElementById('maxBetInput').value=state.settings.maxBet;document.getElementById('multipleInput').value=String(state.settings.multiple);document.getElementById('profitTargetInput').value=state.settings.profitTarget;}
+const syncTargetFromAmount=()=>{const amount=Number(document.getElementById('targetAmountInput').value||0),start=Number(document.getElementById('startingBankrollInput').value||1);document.getElementById('targetPercentInput').value=((amount/start)*100).toFixed(2);};
+const syncTargetFromPercent=()=>{const percent=Number(document.getElementById('targetPercentInput').value||0),start=Number(document.getElementById('startingBankrollInput').value||0);document.getElementById('targetAmountInput').value=Math.round(start*percent/100);};
+function resetShoeOnly(){state.pending={player:null,banker:null};state.sides={player:blankSide(),banker:blankSide()};state.bankroll=state.settings.startingBankroll;saveState();renderAll();}
+function rebuildFromRounds(){const keep=clone(state.rounds);state.sides={player:blankSide(),banker:blankSide()};state.bankroll=state.settings.startingBankroll;state.rounds=[];state.pending={player:null,banker:null};keep.forEach(r=>commitRound(r.player,r.banker));saveState();renderAll();}
+function bindEvents(){document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>setTab(btn.dataset.tabTarget)));document.getElementById('undoBtn').addEventListener('click',()=>{if(!state.rounds.length)return;state.rounds.pop();rebuildFromRounds();});document.getElementById('clearBtn').addEventListener('click',()=>{state.rounds=[];resetShoeOnly();});document.getElementById('newShoeBtn').addEventListener('click',()=>{state.rounds=[];resetShoeOnly();});document.getElementById('autoBuildBtn').addEventListener('click',()=>{autoGenerateLadder();saveState();renderAll();});document.getElementById('targetAmountInput').addEventListener('input',syncTargetFromAmount);document.getElementById('targetPercentInput').addEventListener('input',syncTargetFromPercent);document.getElementById('startingBankrollInput').addEventListener('input',syncTargetFromAmount);document.getElementById('saveSettingsBtn').addEventListener('click',()=>{state.settings.startingBankroll=Number(document.getElementById('startingBankrollInput').value||30000);state.settings.targetAmount=Number(document.getElementById('targetAmountInput').value||5000);state.settings.targetPercent=Number(document.getElementById('targetPercentInput').value||16.67);state.settings.keepSameTarget=document.getElementById('keepTargetToggle').checked;state.settings.minBet=Number(document.getElementById('minBetInput').value||100);state.settings.maxBet=Number(document.getElementById('maxBetInput').value||3000);state.settings.multiple=Number(document.getElementById('multipleInput').value||100);state.settings.profitTarget=Number(document.getElementById('profitTargetInput').value||500);if(!state.rounds.length)state.bankroll=state.settings.startingBankroll;autoGenerateLadder();saveState();renderAll();alert('Settings saved');});document.getElementById('resetAllBtn').addEventListener('click',()=>{if(!confirm('Reset all data?'))return;localStorage.removeItem('bt_v33_complete');loadState();saveState();renderAll();});document.getElementById('saveShoeBtn').addEventListener('click',()=>{state.shoeSnapshots.push({at:new Date().toISOString(),bankroll:state.bankroll,rounds:state.rounds.length});saveState();alert('Shoe snapshot saved');});document.querySelectorAll('.theme-btn').forEach(btn=>btn.addEventListener('click',()=>{state.theme=btn.dataset.theme;saveState();applyTheme();}));['exportCsvBtn','exportPdfBtn','exportXlsBtn'].forEach(id=>document.getElementById(id).addEventListener('click',()=>alert(state.rounds.length?'Export placeholder: ready for file export extension':'No history data yet')));}
+function renderAll(){applyTheme();renderHero();renderPlay();renderBoard();renderHistory();renderAnalytics();buildLadderUI();renderSettings();}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).catch(()=>{});});}
+document.addEventListener('DOMContentLoaded',()=>{loadState();if(!state.ladder||!state.ladder.length)autoGenerateLadder();bindEvents();setupKeypads();renderAll();});

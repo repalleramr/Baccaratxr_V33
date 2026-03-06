@@ -1,287 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Baccarat Tracker V33 Pro+</title>
-  <meta name="theme-color" content="#0b0f17" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="app-shell">
-    <header class="hero">
-      <div class="hero-top">
-        <div class="brand-wrap">
-          <div class="brand-title">Baccarat Tracker</div>
-          <div class="brand-sub">V33 Pro+ Full</div>
-        </div>
-        <div class="hero-start">Start ₹<span id="startBankrollText">30000</span></div>
-      </div>
-      <div class="hero-label">LIVE BANKROLL</div>
-      <div class="hero-bankroll">₹<span id="liveBankrollText">30000</span></div>
-    </header>
-
-    <main class="page-wrap">
-      <section class="tab-screen is-active" data-tab="play">
-        <section class="card compact-card">
-          <div class="two-col compact-stats">
-            <div>
-              <div class="mini-label">Round</div>
-              <div class="mini-value" id="roundCount">0</div>
-            </div>
-            <div class="right-side">
-              <div class="mini-row green">P:<span id="playerActiveCount">0</span> <span id="playerNet">₹0</span> N:<span id="playerNextTotal">₹0</span></div>
-              <div class="mini-row red">B:<span id="bankerActiveCount">0</span> <span id="bankerNet">₹0</span> N:<span id="bankerNextTotal">₹0</span></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Next Round Risk</div>
-          <div class="risk-row">
-            <div class="risk-bar"><div id="riskFill" class="risk-fill"></div></div>
-            <div class="risk-text" id="riskText">LOW</div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Last 5 Results</div>
-          <div class="last5" id="last5Results">—</div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Exposure</div>
-          <div class="exposure-grid">
-            <div>P:<span id="playerExposure">₹0</span></div>
-            <div>B:<span id="bankerExposure">₹0</span></div>
-            <div>T:<span id="totalExposure">₹0</span></div>
-          </div>
-          <div class="next-list">
-            <div class="next-side">
-              <div class="mini-label">Next Player Bets</div>
-              <div id="nextPlayerBets">—</div>
-            </div>
-            <div class="next-side">
-              <div class="mini-label">Next Banker Bets</div>
-              <div id="nextBankerBets">—</div>
-            </div>
-          </div>
-        </section>
-
-        <section class="action-row">
-          <button class="ghost-btn danger" id="undoBtn">Undo Last</button>
-          <button class="ghost-btn" id="clearBtn">Clear Shoe</button>
-          <button class="ghost-btn accent" id="newShoeBtn">New Shoe</button>
-        </section>
-
-        <section class="card keypad-card">
-          <div class="section-title">Player keypad</div>
-          <div class="keypad" id="playerKeypad"></div>
-        </section>
-
-        <section class="card keypad-card">
-          <div class="section-title">Banker keypad</div>
-          <div class="keypad" id="bankerKeypad"></div>
-        </section>
-      </section>
-
-      <section class="tab-screen" data-tab="board">
-        <section class="card">
-          <div class="section-title">Player Numbers</div>
-          <div class="tiles-grid" id="playerBoard"></div>
-        </section>
-        <section class="card">
-          <div class="section-title">Banker Numbers</div>
-          <div class="tiles-grid" id="bankerBoard"></div>
-        </section>
-      </section>
-
-      <section class="tab-screen" data-tab="history">
-        <section class="card">
-          <div class="history-top">
-            <div class="section-title">History</div>
-            <div class="export-row">
-              <button class="small-btn" id="exportCsvBtn">CSV</button>
-              <button class="small-btn" id="exportPdfBtn">PDF</button>
-              <button class="small-btn" id="exportXlsBtn">Excel</button>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table class="history-table" id="historyTable">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Player</th>
-                  <th>Banker</th>
-                  <th>P Net</th>
-                  <th>B Net</th>
-                  <th>Total Net</th>
-                  <th>Bankroll</th>
-                </tr>
-              </thead>
-              <tbody id="historyBody">
-                <tr class="empty-row"><td colspan="9">No rounds recorded yet</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-
-      <section class="tab-screen" data-tab="analytics">
-        <section class="card">
-          <div class="section-title">Analytics Summary</div>
-          <div class="stats-grid">
-            <div class="stat-tile"><span class="stat-label">Rounds</span><span class="stat-value" id="aRounds">0</span></div>
-            <div class="stat-tile"><span class="stat-label">Bankroll</span><span class="stat-value" id="aBankroll">₹30000</span></div>
-            <div class="stat-tile"><span class="stat-label">P Wins</span><span class="stat-value" id="aPWins">0</span></div>
-            <div class="stat-tile"><span class="stat-label">B Wins</span><span class="stat-value" id="aBWins">0</span></div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Target Progress</div>
-          <div class="target-line"><span id="targetCurrent">₹0</span> / <span id="targetGoal">₹5000</span></div>
-          <div class="risk-bar target-bar"><div id="targetFill" class="target-fill"></div></div>
-          <div class="muted" id="targetPercentText">0%</div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Exposure Timeline</div>
-          <div class="chart-box" id="exposureTimeline">No exposure data yet</div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Shoe Volatility</div>
-          <div class="risk-row">
-            <div class="risk-bar"><div id="volatilityFill" class="volatility-fill"></div></div>
-            <div class="risk-text" id="volatilityText">LOW</div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Hit Stage Predictor</div>
-          <div class="predictor-block">
-            <div class="predictor-main">Most likely: <strong id="predictorRange">Step 1–3</strong></div>
-            <div class="predictor-list">
-              <div>Step 1–3: <span id="predA">60%</span></div>
-              <div>Step 4–7: <span id="predB">25%</span></div>
-              <div>Step 8–12: <span id="predC">10%</span></div>
-              <div>Step 13+: <span id="predD">5%</span></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Next Shoe Suggestion</div>
-          <div class="muted" id="nextShoeSuggestion">Available after target reached or shoe stopped with loss.</div>
-        </section>
-      </section>
-
-      <section class="tab-screen" data-tab="ladder">
-        <section class="card">
-          <div class="ladder-top">
-            <div class="section-title">Ladder</div>
-            <button class="small-btn" id="autoBuildBtn">Auto Build</button>
-          </div>
-          <div class="ladder-list" id="ladderList"></div>
-        </section>
-      </section>
-
-      <section class="tab-screen" data-tab="settings">
-        <section class="card">
-          <div class="section-title">Bankroll Setup</div>
-          <div class="field-grid">
-            <label class="field">
-              <span>Starting Bankroll</span>
-              <input id="startingBankrollInput" inputmode="numeric" type="number" value="30000" />
-            </label>
-            <label class="field">
-              <span>Target Amount</span>
-              <input id="targetAmountInput" inputmode="numeric" type="number" value="5000" />
-            </label>
-            <label class="field">
-              <span>Target %</span>
-              <input id="targetPercentInput" inputmode="decimal" type="number" step="0.01" value="16.67" />
-            </label>
-          </div>
-          <label class="toggle-row">
-            <span>Keep same target every shoe</span>
-            <input id="keepTargetToggle" type="checkbox" />
-          </label>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Ladder Builder</div>
-          <div class="field-grid">
-            <label class="field">
-              <span>Min Bet</span>
-              <input id="minBetInput" inputmode="numeric" type="number" value="100" />
-            </label>
-            <label class="field">
-              <span>Max Bet</span>
-              <input id="maxBetInput" inputmode="numeric" type="number" value="3000" />
-            </label>
-            <label class="field">
-              <span>Multiple</span>
-              <select id="multipleInput">
-                <option>10</option>
-                <option>50</option>
-                <option selected>100</option>
-                <option>200</option>
-                <option>500</option>
-                <option>1000</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Profit Target / Number</span>
-              <input id="profitTargetInput" inputmode="numeric" type="number" value="500" />
-            </label>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Theme</div>
-          <div class="theme-row">
-            <button class="theme-btn is-selected" data-theme="casino">Casino Dark</button>
-            <button class="theme-btn" data-theme="neo">Neo Glass</button>
-            <button class="theme-btn" data-theme="classic">Classic Dashboard</button>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="section-title">Strategy Rules</div>
-          <ul class="rules-list">
-            <li>Digits 1–9 activate tracking.</li>
-            <li>0 is recorded but does not activate a number.</li>
-            <li>Excluded numbers behave like zero.</li>
-            <li>Each number is an independent fighter.</li>
-            <li>Net if hit = 8 × current bet − previous same-number losses.</li>
-          </ul>
-        </section>
-
-        <section class="card danger-zone">
-          <div class="section-title">Danger Zone</div>
-          <div class="action-row">
-            <button class="ghost-btn danger" id="resetAllBtn">Reset All Data</button>
-            <button class="ghost-btn" id="saveSettingsBtn">Save Settings</button>
-          </div>
-        </section>
-      </section>
-    </main>
-
-    <nav class="bottom-tabs" id="bottomTabs">
-      <button class="tab-btn is-active" data-tab-target="play">Play</button>
-      <button class="tab-btn" data-tab-target="board">Board</button>
-      <button class="tab-btn" data-tab-target="history">History</button>
-      <button class="tab-btn" data-tab-target="analytics">Analytics</button>
-      <button class="tab-btn" data-tab-target="ladder">Ladder</button>
-      <button class="tab-btn" data-tab-target="settings">Settings</button>
-    </nav>
-  </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Baccarat Tracker V33 Pro+</title><meta name="theme-color" content="#0b0f17"/>
+<link rel="manifest" href="./manifest.json"/><link rel="stylesheet" href="./style.css"/></head><body>
+<div class="app-shell">
+<header class="hero">
+<div class="hero-top"><div><div class="brand-title">Baccarat Tracker</div><div class="brand-sub">V33 Pro+ Complete</div></div><div class="hero-start">Start ₹<span id="startBankrollText">30000</span></div></div>
+<div class="hero-label">LIVE BANKROLL</div><div class="hero-bankroll">₹<span id="liveBankrollText">30000</span></div></header>
+<main class="page-wrap">
+<section class="tab-screen is-active" data-tab="play">
+<section class="card compact-card"><div class="compact-stats"><div class="round-box"><div class="mini-label">Round</div><div class="mini-value" id="roundCount">0</div></div><div class="stats-rows"><div class="mini-row green">P: <span id="playerActiveCount">0</span> <span id="playerNet">₹0</span> N: <span id="playerNextTotal">₹0</span></div><div class="mini-row red">B: <span id="bankerActiveCount">0</span> <span id="bankerNet">₹0</span> N: <span id="bankerNextTotal">₹0</span></div></div></div></section>
+<section class="card keypad-card"><div class="section-title">Player keypad</div><div class="pending-line">Pending: <span id="pendingPlayer">—</span></div><div class="keypad player-pad" id="playerKeypad"></div></section>
+<section class="card keypad-card"><div class="section-title">Banker keypad</div><div class="pending-line">Pending: <span id="pendingBanker">—</span></div><div class="keypad banker-pad" id="bankerKeypad"></div></section>
+<section class="card"><div class="section-title">Next Bets</div><div class="next-lists"><div class="next-box"><div class="mini-label">Next Player Bets</div><div id="nextPlayerBets">—</div></div><div class="next-box"><div class="mini-label">Next Banker Bets</div><div id="nextBankerBets">—</div></div></div></section>
+<section class="action-row"><button class="ghost-btn danger" id="undoBtn">Undo Last</button><button class="ghost-btn" id="clearBtn">Clear Shoe</button><button class="ghost-btn accent" id="newShoeBtn">New Shoe</button></section>
+<section class="card"><div class="section-title">Next Round Risk</div><div class="risk-row"><div class="risk-bar"><div id="riskFill" class="risk-fill"></div></div><div class="risk-text" id="riskText">LOW</div></div></section>
+<section class="card"><div class="section-title">Last 5 Results</div><div class="last5" id="last5Results">—</div></section>
+<section class="card"><div class="section-title">Exposure</div><div class="exposure-grid"><div>P: <span id="playerExposure">₹0</span></div><div>B: <span id="bankerExposure">₹0</span></div><div>T: <span id="totalExposure">₹0</span></div></div></section>
+</section>
+<section class="tab-screen" data-tab="board"><section class="card"><div class="section-title">Player Numbers</div><div class="tiles-grid" id="playerBoard"></div></section><section class="card"><div class="section-title">Banker Numbers</div><div class="tiles-grid" id="bankerBoard"></div></section></section>
+<section class="tab-screen" data-tab="history"><section class="card"><div class="history-top"><div class="section-title">History</div><div class="export-row"><button class="small-btn" id="exportCsvBtn">CSV</button><button class="small-btn" id="exportPdfBtn">PDF</button><button class="small-btn" id="exportXlsBtn">Excel</button></div></div><div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>Date</th><th>Time</th><th>Player</th><th>Banker</th><th>P Net</th><th>B Net</th><th>Total Net</th><th>Bankroll</th></tr></thead><tbody id="historyBody"><tr class="empty-row"><td colspan="9">No rounds recorded yet</td></tr></tbody></table></div></section></section>
+<section class="tab-screen" data-tab="analytics"><section class="card"><div class="section-title">Analytics Summary</div><div class="stats-grid"><div class="stat-tile"><span class="stat-label">Rounds</span><span class="stat-value" id="aRounds">0</span></div><div class="stat-tile"><span class="stat-label">Bankroll</span><span class="stat-value" id="aBankroll">₹30000</span></div><div class="stat-tile"><span class="stat-label">Player Wins</span><span class="stat-value" id="aPWins">0</span></div><div class="stat-tile"><span class="stat-label">Banker Wins</span><span class="stat-value" id="aBWins">0</span></div></div></section>
+<section class="card"><div class="section-title">Target Progress</div><div class="target-line"><span id="targetCurrent">₹0</span> / <span id="targetGoal">₹5000</span></div><div class="risk-bar target-bar"><div id="targetFill" class="target-fill"></div></div><div class="muted" id="targetPercentText">0%</div></section>
+<section class="card"><div class="section-title">Exposure Timeline</div><div class="chart-box" id="exposureTimeline">No exposure data yet</div></section>
+<section class="card"><div class="section-title">Shoe Volatility</div><div class="risk-row"><div class="risk-bar"><div id="volatilityFill" class="volatility-fill"></div></div><div class="risk-text" id="volatilityText">LOW</div></div></section>
+<section class="card"><div class="section-title">Hit Stage Predictor</div><div class="predictor-block"><div class="predictor-main">Most likely: <strong id="predictorRange">Step 1–3</strong></div><div class="predictor-list"><div>Step 1–3: <span id="predA">60%</span></div><div>Step 4–7: <span id="predB">25%</span></div><div>Step 8–12: <span id="predC">10%</span></div><div>Step 13+: <span id="predD">5%</span></div></div></div></section>
+<section class="card"><div class="section-title">Next Shoe Suggestion</div><div class="muted" id="nextShoeSuggestion">Available after target reached or shoe stopped with loss.</div></section></section>
+<section class="tab-screen" data-tab="ladder"><section class="card"><div class="ladder-top"><div class="section-title">Ladder</div><button class="small-btn" id="autoBuildBtn">Auto Build</button></div><div class="ladder-list" id="ladderList"></div></section></section>
+<section class="tab-screen" data-tab="settings"><section class="card"><div class="section-title">Bankroll Setup</div><div class="field-grid"><label class="field"><span>Starting Bankroll</span><input id="startingBankrollInput" type="number" inputmode="numeric"/></label><label class="field"><span>Target Amount</span><input id="targetAmountInput" type="number" inputmode="numeric"/></label><label class="field"><span>Target %</span><input id="targetPercentInput" type="number" inputmode="decimal" step="0.01"/></label></div><label class="toggle-row"><span>Keep same target every shoe</span><input id="keepTargetToggle" type="checkbox"/></label></section>
+<section class="card"><div class="section-title">Ladder Builder</div><div class="field-grid"><label class="field"><span>Min Bet</span><input id="minBetInput" type="number" inputmode="numeric"/></label><label class="field"><span>Max Bet</span><input id="maxBetInput" type="number" inputmode="numeric"/></label><label class="field"><span>Multiple</span><select id="multipleInput"><option value="10">10</option><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="500">500</option><option value="1000">1000</option></select></label><label class="field"><span>Profit Target / Number</span><input id="profitTargetInput" type="number" inputmode="numeric"/></label></div></section>
+<section class="card"><div class="section-title">Theme</div><div class="theme-row"><button class="theme-btn is-selected" data-theme="casino">Casino Dark</button><button class="theme-btn" data-theme="neo">Neo Glass</button><button class="theme-btn" data-theme="classic">Classic Dashboard</button></div></section>
+<section class="card"><div class="section-title">Strategy Rules</div><ul class="rules-list"><li>Digits 1–9 activate tracking on first appearance.</li><li>0 is recorded but does not activate a tracked number.</li><li>Excluded numbers behave like zero.</li><li>Each number is an independent fighter.</li><li>Net if hit = 8 × current bet − previous same-number losses.</li></ul></section>
+<section class="card danger-zone"><div class="section-title">Danger Zone</div><div class="action-row"><button class="ghost-btn danger" id="resetAllBtn">Reset All Data</button><button class="ghost-btn accent" id="saveSettingsBtn">Save Settings</button><button class="ghost-btn" id="saveShoeBtn">Save Shoe Snapshot</button></div></section></section>
+</main>
+<nav class="bottom-tabs"><button class="tab-btn is-active" data-tab-target="play">Play</button><button class="tab-btn" data-tab-target="board">Board</button><button class="tab-btn" data-tab-target="history">History</button><button class="tab-btn" data-tab-target="analytics">Analytics</button><button class="tab-btn" data-tab-target="ladder">Ladder</button><button class="tab-btn" data-tab-target="settings">Settings</button></nav>
+</div><script src="./app.js"></script></body></html>
